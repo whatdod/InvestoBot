@@ -769,7 +769,7 @@ def buongiorno():
     giorno    = ["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"][datetime.now().weekday()]
     pausa_s   = "\n🔕 Notifiche in pausa — /riprendi" if b.get("paused") else ""
     send(
-        f"☀️ <b>{giorno} {datetime.now().strftime('%d/%m/%Y')}</b>\n\n"
+        f"☀️ <b>{giorno} {datetime.now().strftime('%d/%m/%Y')}</b>\n\n Fred puzza \n\n"
         f"💰 Budget rimasto: €{rimanente:.2f} / €{BUDGET_MENSILE:.2f}{pausa_s}\n\n"
         "Monitoro ETF e obbligazioni con dati reali (Yahoo Finance).\n"
         "Scrivi /analisi per un aggiornamento immediato o /help per i comandi."
