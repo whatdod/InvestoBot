@@ -15,9 +15,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 log = logging.getLogger(__name__)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-CHAT_ID        = os.environ.get("CHAT_ID")
-BUDGET_MENSILE = 20.0
-BUDGET_FILE    = "budget.json"
+CHAT_ID        = os.environ.get("CHAT_ID")  # account principale
+CHAT_IDS_AUTORIZZATI = {
+    int(os.environ.get("CHAT_ID", 0)),
+    495866880,  # secondo dispositivo autorizzato
+}
+BUDGET_MENSILE  = 20.0
+BUDGET_FILE     = "budget.json"
 PATRIMONIO_FILE = "patrimonio.json"
 
 # ── ASSET UNIVERSE (solo ETF + obbligazioni, profilo basso rischio) ───────────
@@ -713,7 +717,7 @@ def scan():
                 f"   💶 Considera €3–5 anche fuori budget\n\n"
             )
         msg += "⚠️ <i>Non è consulenza finanziaria. Queste situazioni sono rare.</i>"
-        send(msg)
+        send_tutti(msg)
         return
 
     # Notifiche normali: score_acq >= 65 E RSI < 35
@@ -761,23 +765,23 @@ def scan():
                     f"   Usa /vendi {r['display']} IMPORTO per vendere\n\n"
                 )
             msg_v += "⚠️ <i>Non è consulenza finanziaria. Valuta sempre il tuo orizzonte temporale.</i>"
-            send(msg_v)
+            send_tutti(msg_v)
 
 def buongiorno():
     b         = load_budget()
     rimanente = max(0, BUDGET_MENSILE - b["speso"])
     giorno    = ["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"][datetime.now().weekday()]
     pausa_s   = "\n🔕 Notifiche in pausa — /riprendi" if b.get("paused") else ""
-    send(
-        f"☀️ <b>{giorno} {datetime.now().strftime('%d/%m/%Y')}</b>\n\n Fred puzza \n\n"
-        f"💰 Budget rimasto: €{rimanente:.2f} / €{BUDGET_MENSILE:.2f}{pausa_s}\n\n"
+    send_tutti(
+        f"☀️ <b>{giorno} {datetime.now().strftime('%d/%m/%Y')}</b>\n\n"
+        f"💰 Budget rimasto: €{rimanente:.2f} / €{BUDGET_MENSILE:.2f}{pausa_s}\n\n Fred Puzza e pure Dod \n\n"
         "Monitoro ETF e obbligazioni con dati reali (Yahoo Finance).\n"
         "Scrivi /analisi per un aggiornamento immediato o /help per i comandi."
     )
 
 def check_inizio_mese():
     if datetime.now().day == 1:
-        send(
+        send_tutti(
             f"🔄 <b>Nuovo mese — budget azzerato!</b>\n\n"
             f"{datetime.now().strftime('%B %Y')} è iniziato.\n"
             f"Hai di nuovo €{BUDGET_MENSILE:.2f} disponibili.\n"
@@ -787,6 +791,12 @@ def check_inizio_mese():
 # ═══════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ═══════════════════════════════════════════════════════════════════════════════
+
+def send_tutti(text: str):
+    """Manda il messaggio a tutti gli ID autorizzati."""
+    for cid in CHAT_IDS_AUTORIZZATI:
+        if cid:
+            send(text, cid)
 
 last_id = None
 
@@ -798,12 +808,16 @@ def poll():
         text = msg.get("text", "")
         cid  = msg.get("chat", {}).get("id")
         if text and cid:
+            if cid not in CHAT_IDS_AUTORIZZATI:
+                send("⛔ Non sei autorizzato a usare questo bot.", cid)
+                log.warning(f"Accesso non autorizzato da {cid}")
+                continue
             log.info(f"CMD {cid}: {text[:40]}")
             handle(text, cid)
 
 if __name__ == "__main__":
     log.info("InvestoBot v4 avviato ✅")
-    send(
+    send_tutti(
         "🤖 <b>InvestoBot v4 — Dati reali!</b>\n\n"
         "Nessun valore casuale: tutti i dati vengono scaricati in tempo reale da <b>Yahoo Finance</b>.\n\n"
         "<b>Indicatori attivi:</b>\n"
