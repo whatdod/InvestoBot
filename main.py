@@ -29,14 +29,16 @@ UTENTI = {
 # ── ASSET UNIVERSE ────────────────────────────────────────────────────────────
 # Alpha Vantage usa ticker US. Per ETF europei usiamo i loro equivalenti
 # o il ticker con suffisso .LON per London Stock Exchange
+# Ticker US compatibili con Alpha Vantage piano gratuito
+# Sono gli equivalenti americani degli stessi ETF che hai su Revolut
 ASSETS = [
-    {"ticker": "VUSA.LON",  "display": "VUSA",  "nome": "Vanguard S&P 500 ETF",      "cat": "etf"},
-    {"ticker": "IWDA.LON",  "display": "IWDA",  "nome": "iShares MSCI World",         "cat": "etf"},
-    {"ticker": "VWRL.LON",  "display": "VWRL",  "nome": "Vanguard FTSE All-World",    "cat": "etf"},
-    {"ticker": "EIMI.LON",  "display": "EIMI",  "nome": "iShares Emerging Markets",   "cat": "etf"},
-    {"ticker": "SGLD.LON",  "display": "SGLD",  "nome": "Invesco Physical Gold ETC",  "cat": "gold"},
-    {"ticker": "IBTM.LON",  "display": "IBTM",  "nome": "iShares Core Global Bond",   "cat": "bond"},
-    {"ticker": "VGOV.LON",  "display": "VGOV",  "nome": "Vanguard UK Gilt ETF",       "cat": "bond"},
+    {"ticker": "VOO",   "display": "VOO",  "nome": "Vanguard S&P 500 ETF (=VUSA)",       "cat": "etf"},
+    {"ticker": "URTH",  "display": "URTH", "nome": "iShares MSCI World (=IWDA)",          "cat": "etf"},
+    {"ticker": "VT",    "display": "VT",   "nome": "Vanguard All-World (=VWRL)",           "cat": "etf"},
+    {"ticker": "EEM",   "display": "EEM",  "nome": "iShares Emerging Markets (=EIMI)",     "cat": "etf"},
+    {"ticker": "GLD",   "display": "GLD",  "nome": "SPDR Gold Shares (=SGLD)",             "cat": "gold"},
+    {"ticker": "AGG",   "display": "AGG",  "nome": "iShares Core US Aggregate Bond (bond)","cat": "bond"},
+    {"ticker": "BND",   "display": "BND",  "nome": "Vanguard Total Bond Market (bond)",    "cat": "bond"},
 ]
 
 # Cache locale per evitare troppe chiamate API (Alpha Vantage: 25 call/giorno gratis)
@@ -50,55 +52,68 @@ CACHE_TTL = 3600  # secondi — aggiorna al massimo ogni ora
 def scarica_dati_av(ticker: str) -> pd.DataFrame | None:
     """
     Scarica dati giornalieri da Alpha Vantage.
-    Usa cache per non superare il limite gratuito (25 call/giorno).
+    Usa cache TTL per non superare il limite gratuito (25 call/giorno).
     """
-    now = time.time()
-    if ticker in _cache and now - _cache[ticker]["ts"] < CACHE_TTL:
+    now_ts = time.time()
+    if ticker in _cache and now_ts - _cache[ticker]["ts"] < CACHE_TTL:
         log.info(f"Cache hit: {ticker}")
         return _cache[ticker]["df"]
 
-    if not AV_KEY:
-        log.error("AV_KEY non configurata!")
+    key = AV_KEY
+    if not key:
+        log.error("AV_KEY non trovata nelle variabili d'ambiente!")
         return None
 
+    log.info(f"Chiamo Alpha Vantage per {ticker} con chiave {key[:6]}...")
     url = (
         f"https://www.alphavantage.co/query"
-        f"?function=TIME_SERIES_DAILY_ADJUSTED"
-        f"&symbol={ticker}&outputsize=full&apikey={AV_KEY}"
+        f"?function=TIME_SERIES_DAILY"
+        f"&symbol={ticker}&outputsize=compact&apikey={key}"
     )
     try:
-        r = requests.get(url, timeout=15)
+        r    = requests.get(url, timeout=20)
         data = r.json()
+        log.info(f"AV risposta chiavi: {list(data.keys())}")
 
-        if "Time Series (Daily)" not in data:
-            log.warning(f"Alpha Vantage: nessun dato per {ticker}. Risposta: {list(data.keys())}")
+        # Gestione rate limit (5 call/min nel piano free)
+        if "Note" in data:
+            log.warning(f"AV rate limit: {data['Note']}")
+            time.sleep(15)
             return None
 
-        ts = data["Time Series (Daily)"]
+        if "Error Message" in data:
+            log.error(f"AV errore per {ticker}: {data['Error Message']}")
+            return None
+
+        key_ts = "Time Series (Daily)"
+        if key_ts not in data:
+            log.warning(f"Nessuna serie per {ticker}. Chiavi: {list(data.keys())}")
+            return None
+
+        ts = data[key_ts]
         df = pd.DataFrame.from_dict(ts, orient="index").sort_index()
         df.index = pd.to_datetime(df.index)
         df = df.rename(columns={
-            "1. open":             "Open",
-            "2. high":             "High",
-            "3. low":              "Low",
-            "4. close":            "Close",
-            "5. adjusted close":   "Adj Close",
-            "6. volume":           "Volume",
+            "1. open":   "Open",
+            "2. high":   "High",
+            "3. low":    "Low",
+            "4. close":  "Close",
+            "5. volume": "Volume",
         })
-        for col in ["Open","High","Low","Close","Adj Close","Volume"]:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col])
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        df.dropna(inplace=True)
 
         if len(df) < 30:
-            log.warning(f"Dati insufficienti per {ticker}: {len(df)} giorni")
+            log.warning(f"Dati insufficienti per {ticker}: {len(df)} righe")
             return None
 
-        _cache[ticker] = {"df": df, "ts": now}
-        log.info(f"Scaricato {ticker}: {len(df)} sessioni")
+        _cache[ticker] = {"df": df, "ts": now_ts}
+        log.info(f"OK {ticker}: {len(df)} sessioni, ultimo prezzo {float(df['Close'].iloc[-1]):.2f}")
         return df
 
     except Exception as e:
-        log.error(f"Errore Alpha Vantage {ticker}: {e}")
+        log.error(f"Eccezione Alpha Vantage {ticker}: {e}")
         return None
 
 # ── INDICATORI ────────────────────────────────────────────────────────────────
@@ -336,7 +351,9 @@ def fmt_bb(b: str) -> str:
 
 def prezzo_live(ticker_display: str) -> float | None:
     meta = next((a for a in ASSETS if a["display"] == ticker_display), None)
-    if not meta: return None
+    if not meta:
+        log.warning(f"Ticker {ticker_display} non trovato in ASSETS")
+        return None
     df = scarica_dati_av(meta["ticker"])
     if df is None: return None
     return round(float(df["Close"].iloc[-1]), 4)
@@ -547,6 +564,31 @@ def handle(text: str, cid: int):
             "<b>Regola d'oro: non smettere quando il mercato scende.</b>\n"
             "Quelli sono i mesi più preziosi.", cid)
 
+    # /testapi — verifica connessione Alpha Vantage
+    elif tl.startswith("/testapi"):
+        send("⏳ Verifico connessione Alpha Vantage...", cid)
+        key = AV_KEY
+        if not key:
+            send("❌ AV_KEY non configurata in Railway!", cid)
+            return
+        try:
+            url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=VOO&outputsize=compact&apikey={key}"
+            r = requests.get(url, timeout=20)
+            data = r.json()
+            keys = list(data.keys())
+            if "Time Series (Daily)" in data:
+                ultimo = list(data["Time Series (Daily)"].keys())[0]
+                prezzo = data["Time Series (Daily)"][ultimo]["4. close"]
+                send(f"✅ Alpha Vantage funziona!\n\nVOO ultimo prezzo: ${prezzo}\nData: {ultimo}\n\nChiave: {key[:6]}...", cid)
+            elif "Note" in data:
+                send(f"⚠️ Rate limit raggiunto (5 call/min).\nAspetta 1 minuto e riprova.\n\nMessaggio AV: {data['Note'][:200]}", cid)
+            elif "Error Message" in data:
+                send(f"❌ Errore AV: {data['Error Message']}", cid)
+            else:
+                send(f"⚠️ Risposta inattesa.\nChiavi ricevute: {keys}", cid)
+        except Exception as e:
+            send(f"❌ Errore connessione: {e}", cid)
+
     # /help
     elif tl.startswith("/help") or tl.startswith("/start"):
         send(
@@ -558,7 +600,8 @@ def handle(text: str, cid: int):
             "/storico — tutte le operazioni\n\n"
             "<b>📈 Analisi</b>\n"
             "/analisi — tutti gli indicatori ora\n"
-            "/consiglio — suggerimento personalizzato\n\n"
+            "/consiglio — suggerimento personalizzato\n"
+            "/testapi — verifica connessione dati\n\n"
             "<b>💰 Budget</b>\n"
             "/budget — situazione tuo budget\n"
             "/pausanotifiche · /riprendi\n\n"
