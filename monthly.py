@@ -19,13 +19,13 @@ BUDGET = 20.0
 
 # ── PORTAFOGLIO ATTUALE (aggiorna questi dati quando cambia) ──────────────────
 PORTAFOGLIO = [
-    {"ticker": "EUNL.L", "display": "EUNL", "nome": "iShares MSCI World Acc",       "investito": 19.59},
-    {"ticker": "VUSA.L", "display": "VUSA", "nome": "Vanguard S&P 500 Dist",         "investito": 10.33},
-    {"ticker": "JEDI.L", "display": "JEDI", "nome": "VanEck Space Innovators",       "investito": 7.60},
-    {"ticker": "NVDA",   "display": "NVDA", "nome": "Nvidia",                        "investito": 6.69},
-    {"ticker": "VUAA.L", "display": "VUAA", "nome": "Vanguard S&P 500 Acc",          "investito": 5.18},
-    {"ticker": "V80A.L", "display": "V80A", "nome": "Vanguard LifeStrategy 80%",     "investito": 4.87},
-    {"ticker": "DFEN.L", "display": "DFEN", "nome": "VanEck Defense ETF",            "investito": 4.61},
+    {"ticker": "EUNL.L", "display": "EUNL", "nome": "iShares MSCI World Acc",       "investito": 20.15},
+    {"ticker": "VUSA.L", "display": "VUSA", "nome": "Vanguard S&P 500 Dist",         "investito": 10.58},
+    {"ticker": "JEDI.L", "display": "JEDI", "nome": "VanEck Space Innovators",       "investito": 7.75},
+    {"ticker": "NVDA",   "display": "NVDA", "nome": "Nvidia",                        "investito": 7.02},
+    {"ticker": "VUAA.L", "display": "VUAA", "nome": "Vanguard S&P 500 Acc",          "investito": 5.31},
+    {"ticker": "V80A.L", "display": "V80A", "nome": "Vanguard LifeStrategy 80%",     "investito": 5.00},
+    {"ticker": "DFEN.L", "display": "DFEN", "nome": "VanEck Defense ETF",            "investito": 4.73},
     {"ticker": "CPRX",   "display": "CPRX", "nome": "Catalyst Pharmaceuticals",      "investito": 1.57},
 ]
 
