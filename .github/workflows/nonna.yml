@@ -44,7 +44,6 @@ jobs:
           CHAT_ID: ${{ secrets.CHAT_ID }}
           MOMENTO: ${{ steps.momento.outputs.valore }}
 
-      # Salva il contatore aggiornato nel repository per la prossima esecuzione
       - name: Salva contatore
         run: |
           git config user.name "InvestoBot"
