@@ -1,8 +1,9 @@
 """
 InvestoBot — Modulo "Buongiornissimo Nonna"
-Genera messaggi in stile "Buongiornissimo Kaffeè" — lo stile tipico
-delle immagini WhatsApp con fiori, cuoricini, caffè e frasi sdolcinate.
-Ogni tot messaggi, lancia una dedica speciale a tema nonna.
+Pesca immagini REALI già pronte da librerie online gratuite
+(non generate, non create da noi) e le manda via Telegram
+con una didascalia in stile "Buongiornissimo".
+Ogni tot immagini, una dedica speciale a tema nonna.
 Riconosce le festività italiane.
 """
 import os, random, requests
@@ -41,71 +42,96 @@ def get_festivita_oggi():
     if oggi == pasqua + timedelta(days=1): return "🐰 BUONA PASQUETTA 🐰"
     return None
 
-# ── TEMPLATE "BUONGIORNISSIMO" — stile autentico WhatsApp ────────────────────
-TEMPLATE_MATTINA = [
-    "☕🌻✨\n\n<b>BUONGIORNISSIMO KAFFEEEE!!! ☕☕☕</b>\n\nChe questa giornata sia bollente come il caffè e dolce come il miele! 🍯 Un abbraccio a tutti voi 🤗💕",
-    "🌞🌸🦋\n\n<b>UN'ALTRA GIORNATA BOLLENTE!!! BUONGIORNO!!! ☀️</b>\n\nSorridete sempre, la vita è troppo breve per i pensieri brutti! 😘 Vi voglio bene amici miei 💖",
-    "🐦🌷💐\n\n<b>BUONGIORNO A TUTTI VOI CHE LEGGETE QUESTO MESSAGGIO!!! 🌅</b>\n\nChi vi ama vi pensa anche quando non ve lo dice... e io vi penso sempre! ❤️🥰",
-    "☕🧁🌼\n\n<b>BUONGIORNISSIMO AMICI MIEI!!! ☕✨</b>\n\nLa vita è come il caffè: amara se non ci metti il giusto zucchero di allegria! 😄💛 Buona giornata a tutti!",
-    "🌅🕊️💕\n\n<b>SVEGLIA SVEGLIAAA!!! È GIÀ MATTINA!!! ☀️🌞</b>\n\nOgni nuovo giorno è un regalo, apritelo con il sorriso! 🎁😍 Un bacio enorme a tutti voi!",
-    "🌻🦋☕\n\n<b>BUONGIORNO CON IL SOLE CHE SPLENDE PER VOI!!! 🌞</b>\n\nChi semina sorrisi raccoglie amicizie! 🌱💛 Buona giornata splendida gente!",
-    "💐🐝🌸\n\n<b>BUONGIORNISSIMO E BUON INIZIO SETTIMANA!!! 🎉</b>\n\nNon importa quanto sia difficile la giornata, voi siete più forti! 💪😘 Vi abbraccio forte!",
-    "☁️🌈☕\n\n<b>ANCHE OGGI IL SOLE SI È SVEGLIATO PER VOI!!! ☀️</b>\n\nRicordate: siete unici e speciali, nessuno può rubarvi il sorriso! 😇💕",
-    "🌺🦜🍃\n\n<b>BUONGIORNO TROPICALE A TUTTI GLI AMICI!!! 🌴</b>\n\nLa felicità non si compra, si regala... e io ve la regalo tutta! 🎁❤️",
-    "🐓🌅🥐\n\n<b>CHICCHIRICHIIII!!! È ORA DI SVEGLIARSI AMICI!!! 🌞</b>\n\nUn nuovo giorno, mille nuove possibilità! Cogliamole tutte insieme! 🙌💖",
+# ── DIDASCALIE (testo Telegram separato dalla foto, stile buongiornissimo) ───
+DIDASCALIE_MATTINA = [
+    "☕🌻✨ <b>BUONGIORNISSIMO KAFFEEEE!!!</b> ☕☕☕\nChe questa giornata sia bollente come il caffè e dolce come il miele! 🍯",
+    "🌞🌸🦋 <b>UN'ALTRA GIORNATA BOLLENTE!!! BUONGIORNO!!!</b> ☀️\nSorridete sempre, vi voglio bene amici miei 💖",
+    "🐦🌷💐 <b>BUONGIORNO A TUTTI VOI!!!</b> 🌅\nChi vi ama vi pensa sempre, anche quando non lo dice ❤️",
+    "☕🧁🌼 <b>BUONGIORNISSIMO AMICI MIEI!!!</b> ☕✨\nLa vita è come il caffè: amara senza il giusto zucchero di allegria! 😄",
+    "🌅🕊️💕 <b>SVEGLIA SVEGLIAAA!!! È GIÀ MATTINA!!!</b> ☀️\nOgni nuovo giorno è un regalo, apritelo col sorriso! 🎁",
+    "🌻🦋☕ <b>BUONGIORNO CON IL SOLE PER VOI!!!</b> 🌞\nChi semina sorrisi raccoglie amicizie! 🌱💛",
+    "💐🐝🌸 <b>BUONGIORNISSIMO E BUON INIZIO SETTIMANA!!!</b> 🎉\nVoi siete più forti di ogni difficoltà! 💪😘",
+    "🌺🦜🍃 <b>BUONGIORNO TROPICALE A TUTTI!!!</b> 🌴\nLa felicità non si compra, si regala... eccola! 🎁❤️",
 ]
 
-TEMPLATE_SERA = [
-    "🌙⭐🕯️\n\n<b>BUONANOTTE A TUTTI VOI CHE LEGGETE!!! 😴</b>\n\nChe i sogni siano dolci come una fetta di torta della nonna! 🍰💕 Vi voglio bene!",
-    "🌌💫🌃\n\n<b>BUONA NOTTE STELLATA AMICI MIEI!!! ✨</b>\n\nDomani sarà un giorno migliore, ma stanotte... riposatevi! 😘🛏️",
-    "🌙🦉🕊️\n\n<b>È ORA DI ANDARE A NANNA!!! 😴💤</b>\n\nChi vi ama vi augura la buonanotte più dolce di sempre! 💕🌙",
-    "✨🌃🛏️\n\n<b>BUONANOTTE CON UN ABBRACCIO VIRTUALE!!! 🤗</b>\n\nLasciate andare i pensieri della giornata, domani è un altro giorno! 🌅😴",
-    "🌙🍃🕯️\n\n<b>LA LUNA VI AUGURA BUONANOTTE!!! 🌕</b>\n\nChiudete gli occhi e sognate in grande, ve lo meritate! ✨💖",
-    "💤🌟🦋\n\n<b>BUONANOTTE DOLCISSIMA A TUTTI!!! 😴</b>\n\nChe ogni sogno sia un viaggio meraviglioso! ✈️💫 Vi penso sempre!",
-    "🌌🛌🕊️\n\n<b>SOGNI D'ORO AMICI MIEI!!! 🌙</b>\n\nLa giornata è finita ma il vostro sorriso resta nel mio cuore! 💛😘",
-    "⭐🌃🍵\n\n<b>BUONANOTTE CON UNA TISANA CALDA!!! ☕</b>\n\nRiposate bene, domani vi aspetta una giornata fantastica! 🌞💕",
+DIDASCALIE_SERA = [
+    "🌙⭐🕯️ <b>BUONANOTTE A TUTTI VOI!!!</b> 😴\nChe i sogni siano dolci come una fetta di torta! 🍰💕",
+    "🌌💫🌃 <b>BUONA NOTTE STELLATA AMICI MIEI!!!</b> ✨\nDomani sarà un giorno migliore, ora riposatevi! 😘",
+    "🌙🦉🕊️ <b>È ORA DI ANDARE A NANNA!!!</b> 😴💤\nVi auguro la buonanotte più dolce di sempre 💕",
+    "✨🌃🛏️ <b>BUONANOTTE CON UN ABBRACCIO VIRTUALE!!!</b> 🤗\nLasciate andare i pensieri della giornata 🌅",
+    "🌙🍃🕯️ <b>LA LUNA VI AUGURA BUONANOTTE!!!</b> 🌕\nChiudete gli occhi e sognate in grande ✨",
+    "💤🌟🦋 <b>BUONANOTTE DOLCISSIMA A TUTTI!!!</b> 😴\nChe ogni sogno sia un viaggio meraviglioso ✈️",
 ]
 
-# ── DEDICHE SPECIALI "NONNA" — ogni N messaggi ───────────────────────────────
 DEDICHE_NONNA = [
-    "👵💕🌹\n\n<b>LA NONNA È... AMORE PURO!!! 💖</b>\n\nChi ha la fortuna di avere ancora la nonna, l'abbracci forte oggi! Le nonne sono il cuore della famiglia, la dolcezza fatta persona! 🥰👵💐\n\nUn pensiero speciale per tutte le nonne del mondo, quelle in cielo e quelle che ci coccolano ancora! 🕊️❤️",
-    "👵🍪☕\n\n<b>LA NONNA È... PROFUMO DI BISCOTTI E COCCOLE INFINITE!!! 🍪💕</b>\n\nNessun abbraccio è caldo come quello della nonna, nessuna minestra è buona come la sua! 😋🥣 Tanti auguri a tutte le nonne speciali! 👵💖",
-    "👵🌺💌\n\n<b>LA NONNA È... LA CUSTODE DEI RICORDI PIÙ BELLI!!! 📸💕</b>\n\nLe sue mani hanno cresciuto intere famiglie, il suo cuore non finisce mai di amare! 🥰 Un bacio enorme a tutte le nonne del mondo! 👵❤️",
-    "👵🧶✨\n\n<b>LA NONNA È... SAGGEZZA E DOLCEZZA INSIEME!!! 🌟</b>\n\nOgni nonna porta con sé una vita di amore da raccontare. Abbracciatela forte oggi, è un regalo che non dura per sempre! 🤗💐",
-    "👵🌻🍰\n\n<b>LA NONNA È... LA TORTA PIÙ BUONA DEL MONDO!!! 🎂😋</b>\n\nNessuno cucina con amore come fa lei! Un grazie infinito a tutte le nonne che ci hanno coccolato! 👵💕🙏",
+    "👵💕🌹 <b>LA NONNA È... AMORE PURO!!!</b> 💖\nAbbracciatela forte oggi, è il cuore della famiglia 🥰",
+    "👵🍪☕ <b>LA NONNA È... PROFUMO DI BISCOTTI E COCCOLE!!!</b> 🍪💕\nNessun abbraccio è caldo come il suo 😋",
+    "👵🌺💌 <b>LA NONNA È... CUSTODE DEI RICORDI PIÙ BELLI!!!</b> 📸💕\nLe sue mani hanno cresciuto intere famiglie 🥰",
+    "👵🧶✨ <b>LA NONNA È... SAGGEZZA E DOLCEZZA INSIEME!!!</b> 🌟\nUn regalo che non dura per sempre, abbracciatela! 🤗",
+    "👵🌻🍰 <b>LA NONNA È... LA TORTA PIÙ BUONA DEL MONDO!!!</b> 🎂😋\nGrazie infinite a tutte le nonne speciali 👵💕",
 ]
 
-# ── QUERY IMMAGINI (collage colorati, fiori, cuoricini — stile buongiornissimo) ──
-QUERY_MATTINA = [
-    "flowers coffee morning colorful", "sunrise flowers pastel", "coffee cup flowers cute",
-    "morning sunshine flowers", "tea flowers pastel aesthetic", "butterfly flowers spring",
-]
-QUERY_SERA = [
-    "moon stars night sky aesthetic", "candle night cozy aesthetic", "night sky stars purple",
-    "moon flowers night aesthetic", "starry night peaceful",
-]
-QUERY_NONNA = [
-    "grandmother cartoon illustration flowers", "vintage grandma illustration cozy",
-    "grandmother hugging cartoon warm", "elderly woman cartoon flowers vintage",
-]
+# ── FONTI IMMAGINI REALI ONLINE (no generazione, no AI) ──────────────────────
+# Ogni fonte ha priorità diversa per momento/tipo. Tutte restituiscono foto vere.
 
-def get_immagine_unsplash(query: str):
+def fonte_cat_api():
+    """The Cat API — foto reali di gatti."""
     try:
-        url = f"https://source.unsplash.com/600x600/?{query.replace(' ','%20')}"
-        r = requests.get(url, timeout=12, allow_redirects=True)
+        r = requests.get("https://api.thecatapi.com/v1/images/search", timeout=10)
+        return r.json()[0]["url"]
+    except Exception as e:
+        print(f"[cat_api] {e}"); return None
+
+def fonte_dog_api():
+    """The Dog API — foto reali di cani."""
+    try:
+        r = requests.get("https://api.thedogapi.com/v1/images/search", timeout=10)
+        return r.json()[0]["url"]
+    except Exception as e:
+        print(f"[dog_api] {e}"); return None
+
+def fonte_picsum():
+    """Lorem Picsum — foto reali fotografiche casuali, alta qualità."""
+    try:
+        seed = random.randint(1, 5000)
+        url  = f"https://picsum.photos/seed/{seed}/700/700"
+        r = requests.head(url, timeout=10, allow_redirects=True)
+        return url if r.status_code == 200 else None
+    except Exception as e:
+        print(f"[picsum] {e}"); return None
+
+def fonte_loremflickr(tag: str):
+    """LoremFlickr — foto reali da Flickr filtrate per tag tematico."""
+    try:
+        url = f"https://loremflickr.com/700/700/{tag}"
+        r = requests.head(url, timeout=10, allow_redirects=True)
         return r.url if r.status_code == 200 else None
     except Exception as e:
-        print(f"Errore Unsplash: {e}")
-        return None
+        print(f"[loremflickr] {e}"); return None
 
-def get_immagine_picsum():
-    try:
-        seed = random.randint(1, 1000)
-        return f"https://picsum.photos/seed/{seed}/600/600"
-    except:
-        return None
+def get_immagine(tipo: str) -> str | None:
+    """
+    Pesca un'immagine reale a tema, provando più fonti in cascata.
+    tipo: 'mattina', 'sera', 'nonna'
+    """
+    if tipo == "mattina":
+        tag = random.choice(["flowers", "coffee", "sunrise", "morning", "garden"])
+        fonti = [lambda: fonte_loremflickr(tag), fonte_picsum, fonte_cat_api, fonte_dog_api]
+    elif tipo == "sera":
+        tag = random.choice(["night", "moon", "stars", "candle"])
+        fonti = [lambda: fonte_loremflickr(tag), fonte_picsum, fonte_cat_api, fonte_dog_api]
+    else:  # nonna
+        tag = random.choice(["grandmother", "elderly", "garden", "vintage"])
+        fonti = [lambda: fonte_loremflickr(tag), fonte_picsum, fonte_cat_api]
 
-# ── CONTATORE MESSAGGI ────────────────────────────────────────────────────────
+    for fonte in fonti:
+        img = fonte()
+        if img:
+            print(f"✅ Immagine trovata: {img[:60]}")
+            return img
+    return None
+
+# ── CONTATORE ──────────────────────────────────────────────────────────────────
 COUNTER_FILE = "nonna_counter.txt"
 OGNI_QUANTI_NONNA = 5
 
@@ -123,7 +149,7 @@ def get_e_incrementa_contatore():
     return n
 
 # ── TELEGRAM ──────────────────────────────────────────────────────────────────
-def send_photo(url, caption, cid):
+def send_photo(url: str, caption: str, cid: str) -> bool:
     try:
         requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto",
@@ -133,10 +159,10 @@ def send_photo(url, caption, cid):
         print(f"✅ Foto inviata a {cid}")
         return True
     except Exception as e:
-        print(f"❌ Errore foto {cid}: {e}")
+        print(f"❌ Errore foto a {cid}: {e}")
         return False
 
-def send_text(text, cid):
+def send_text(text: str, cid: str):
     try:
         requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
@@ -144,7 +170,7 @@ def send_text(text, cid):
             timeout=15
         ).raise_for_status()
     except Exception as e:
-        print(f"❌ Errore testo {cid}: {e}")
+        print(f"❌ Errore testo a {cid}: {e}")
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 def main():
@@ -154,20 +180,20 @@ def main():
 
     if is_dedica_nonna:
         testo = random.choice(DEDICHE_NONNA)
-        query = random.choice(QUERY_NONNA)
+        tipo  = "nonna"
     elif MOMENTO == "mattina":
-        testo = random.choice(TEMPLATE_MATTINA)
-        query = random.choice(QUERY_MATTINA)
+        testo = random.choice(DIDASCALIE_MATTINA)
+        tipo  = "mattina"
     else:
-        testo = random.choice(TEMPLATE_SERA)
-        query = random.choice(QUERY_SERA)
+        testo = random.choice(DIDASCALIE_SERA)
+        tipo  = "sera"
 
     if festivita:
-        caption = f"{festivita}\n\n{testo}\n\n<i>📤 Pronto da inoltrare!</i>"
+        caption = f"{festivita}\n\n{testo}\n\n<i>📤 Pronta da inoltrare!</i>"
     else:
-        caption = f"{testo}\n\n<i>📤 Pronto da inoltrare!</i>"
+        caption = f"{testo}\n\n<i>📤 Pronta da inoltrare!</i>"
 
-    img = get_immagine_unsplash(query) or get_immagine_picsum()
+    img = get_immagine(tipo)
 
     for cid in CHAT_IDS:
         if img:
@@ -177,8 +203,8 @@ def main():
         else:
             send_text(caption, cid)
 
-    tipo = "DEDICA NONNA" if is_dedica_nonna else MOMENTO.upper()
-    print(f"✅ Messaggio inviato — tipo: {tipo} — contatore: {contatore} — festività: {festivita or 'nessuna'}")
+    tipo_log = "DEDICA NONNA" if is_dedica_nonna else MOMENTO.upper()
+    print(f"✅ Messaggio inviato — tipo: {tipo_log} — contatore: {contatore} — festività: {festivita or 'nessuna'}")
 
 if __name__ == "__main__":
     main()
