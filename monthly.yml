@@ -1,0 +1,34 @@
+name: InvestoBot Consiglio Mensile
+
+on:
+  schedule:
+    - cron: '0 8 1 * *'
+  workflow_dispatch:
+    inputs:
+      modalita:
+        description: 'mensile / analisi / portafoglio'
+        required: false
+        default: 'mensile'
+      portfolio_data:
+        description: 'Solo per modalita=portafoglio — es: EUNL:19.59,VUSA:10.33'
+        required: false
+        default: ''
+
+jobs:
+  analisi:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests yfinance pandas numpy
+      - run: python monthly.py
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          AV_KEY: ${{ secrets.AV_KEY }}
+          MODALITA: ${{ github.event.inputs.modalita || 'mensile' }}
+          PORTFOLIO_DATA: ${{ github.event.inputs.portfolio_data || '' }}
